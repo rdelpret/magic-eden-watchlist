@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+import logging
+import requests
+from columnar import columnar
+from click import style
+from lib.config import get_config
+
+#{'symbol': 'cyber_pharmacies', 'floorPrice': 5.2, 'listedCount': 51, 'avgPrice24hr': 16.96, 'volumeAll': 1156.49}
+CLI_HEADER = ['Project', 'NFTs Listed', 'Floor', 'Average Price (24h)', 'Volume']
+
+def get_stats_for_project(project):
+  url = 'https://api-mainnet.magiceden.dev/v2/collections/%s/stats' % project
+  r = requests.get(url)
+  return r.json()
+
+def get_stats_for_projects(projects):
+  stats_for_all_projects = []
+
+  for i in projects:
+     stats_for_all_projects.append(get_stats_for_project(i))
+       
+  return stats_for_all_projects
+
+def process_stats(projects):
+  projects_list = []
+  for i in projects:
+    project = [
+               i["symbol"], i["listedCount"], 
+               "{:.2f}".format(i["floorPrice"] / 1000000000), 
+               "{:.2f}".format(i["avgPrice24hr"] / 1000000000), 
+               "{:.2f}".format(i["volumeAll"] / 1000000000)
+              ]
+    projects_list.append(project)        
+  return projects_list
+
+
+def pretty_print(data):
+    patterns = [
+        ('OPEN', lambda text: style(text, fg='green')),
+        ('●', lambda text: style(text, fg='green')),
+        ('■', lambda text: style(text, fg='blue')),
+        ('⬬', lambda text: style(text, fg='red')),
+    ]
+
+    table = columnar(data, headers=CLI_HEADER, patterns=patterns, no_borders=True)
+    print(table)
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+
+    config = get_config()
+    projects = config["projects"]
+    projects = get_stats_for_projects(projects)
+    projects = process_stats(projects)   
+    pretty_print(projects)
+
+
+
+if __name__ == "__main__":
+    main()
+
